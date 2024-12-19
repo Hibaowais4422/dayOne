@@ -1,0 +1,207 @@
+<!-- Is code ka step-by-step aur line-by-line breakdown karte hain:
+
+---
+
+### **1. Imports aur Component Setup:**
+```javascript
+import Countdown from "@/components/count-down";
+```
+- Ye import statement `Countdown` component ko la raha hai jo `@/components/count-down` path pe hai.  
+  (`@/` Next.js me `src` directory ko refer karta hai).
+
+```javascript
+"use client"; // Enables client-side rendering for this component
+```
+- `"use client";` directive client-side rendering enable karta hai. React hooks jaise `useState` sirf client-side rendering pe kaam karte hain.
+
+```javascript
+import { useState, useRef, useEffect, ChangeEvent } from "react";
+```
+- **Hooks** aur **types** ko import kiya gaya hai:
+  - `useState`: State manage karne ke liye.
+  - `useRef`: DOM elements ya timer reference save karne ke liye.
+  - `useEffect`: Side effects manage karne ke liye (jaise timer updates).
+  - `ChangeEvent`: Input events ke liye TypeScript type.
+
+```javascript
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/button";
+```
+- Custom `Input` aur `Button` components ko import kiya gaya hai jo alag se banaye gaye hain.
+
+---
+
+### **2. State aur Variables Define karna:**
+```javascript
+const [duration, setDuration] = useState<number | string>("");
+```
+- **`duration`** state user input ko store karne ke liye hai. Ye ya to `number` hoga ya `string`.
+
+```javascript
+const [timeLeft, setTimeLeft] = useState<number>(0);
+```
+- **`timeLeft`** state timer me kitna waqt bacha hai usse track karta hai.
+
+```javascript
+const [isActive, setIsActive] = useState<boolean>(false);
+const [isPaused, setIsPaused] = useState<boolean>(false);
+```
+- **`isActive`** aur **`isPaused`** states timer ki condition ko track karte hain (active ya paused).
+
+```javascript
+const timerRef = useRef<NodeJS.Timeout | null>(null);
+```
+- `timerRef` timer interval ka reference store karta hai taake usse clear kiya ja sake.
+
+---
+
+### **3. Function Definitions:**
+#### **a. Handle Duration Set:**
+```javascript
+const handleSetDuration = (): void => {
+  if (typeof duration === "number" && duration > 0) {
+    setTimeLeft(duration);
+    setIsActive(false);
+    setIsPaused(false);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+  }
+};
+```
+- **Kaam:**  
+  - User input ko validate karta hai.
+  - Timer reset karta hai aur duration set karta hai.
+  - Agar koi purana timer chal raha ho, usse stop karta hai.
+
+#### **b. Handle Start:**
+```javascript
+const handleStart = (): void => {
+  if (timeLeft > 0) {
+    setIsActive(true);
+    setIsPaused(false);
+  }
+};
+```
+- **Kaam:**  
+  - Timer start karta hai (agar time left > 0 ho).
+  - Active aur paused states update karta hai.
+
+#### **c. Handle Pause:**
+```javascript
+const handlePause = (): void => {
+  if (isActive) {
+    setIsPaused(true);
+    setIsActive(false);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+  }
+};
+```
+- **Kaam:**  
+  - Timer ko pause karta hai aur current interval ko clear karta hai.
+
+#### **d. Handle Reset:**
+```javascript
+const handleReset = (): void => {
+  setIsActive(false);
+  setIsPaused(false);
+  setTimeLeft(typeof duration === "number" ? duration : 0);
+  if (timerRef.current) {
+    clearInterval(timerRef.current);
+  }
+};
+```
+- **Kaam:**  
+  - Timer reset karta hai (original duration par laata hai) aur interval clear karta hai.
+
+#### **e. Format Time:**
+```javascript
+const formatTime = (time: number): string => {
+  const minutes = Math.floor(time / 60);
+  const seconds = time % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+};
+```
+- **Kaam:**  
+  - `timeLeft` ko `mm:ss` format me convert karta hai.
+
+#### **f. Handle Duration Change:**
+```javascript
+const handleDurationChange = (e: ChangeEvent<HTMLInputElement>): void => {
+  setDuration(Number(e.target.value) || "");
+};
+```
+- **Kaam:**  
+  - User ke input ko state (`duration`) me save karta hai.
+
+---
+
+### **4. useEffect for Timer Logic:**
+```javascript
+useEffect(() => {
+  if (isActive && !isPaused) {
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prevTime) => {
+        if (prevTime <= 1) {
+          clearInterval(timerRef.current!);
+          return 0;
+        }
+        return prevTime - 1;
+      });
+    }, 1000);
+  }
+  return () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+  };
+}, [isActive, isPaused]);
+```
+- **Kaam:**  
+  - Timer ke liye interval set karta hai.
+  - Jab time khatam ho jaye (`prevTime <= 1`), interval clear karta hai.
+  - Dependency array (`isActive`, `isPaused`) ke basis par effect rerun hota hai.
+
+---
+
+### **5. JSX (UI) Return:**
+```javascript
+<div className="flex flex-col items-center justify-center h-screen bg-gray-100 dark:bg-gray-900">
+  {/* Timer Box */}
+  <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-8 w-full max-w-md">
+    {/* Title */}
+    <h1 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-200 text-center">
+      Countdown Timer
+    </h1>
+    {/* Input aur Set Button */}
+    <div className="flex items-center mb-6">
+      <Input
+        type="number"
+        id="duration"
+        placeholder="Enter duration in seconds"
+        value={duration}
+        onChange={handleDurationChange}
+      />
+      <Button onClick={handleSetDuration}>Set</Button>
+    </div>
+    {/* Time Left */}
+    <div className="text-6xl font-bold mb-8">{formatTime(timeLeft)}</div>
+    {/* Timer Controls */}
+    <div className="flex justify-center gap-4">
+      <Button onClick={handleStart}>{isPaused ? "Resume" : "Start"}</Button>
+      <Button onClick={handlePause}>Pause</Button>
+      <Button onClick={handleReset}>Reset</Button>
+    </div>
+  </div>
+</div>
+```
+- Timer ka UI banata hai:
+  - User duration input field aur `Set` button.
+  - Formatted timer (`mm:ss` format).
+  - Start, Pause, aur Reset buttons.
+
+---
+
+Agar koi specific part clear nahi hua to zaroor poochho! 😊 -->
